@@ -1,12 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WOL Test</title>
+<link rel="stylesheet" href="style.css">
+</head>
 <body>
 
-<h1>TEST</h1>
+<h1>WOL Test</h1>
 
-<button onclick="alert('funktioniert')">
-Klick mich
+<button id="run">
+Start Test
 </button>
+
+<h2>Status</h2>
+<pre id="status"></pre>
+
+<h2>Ergebnis</h2>
+<pre id="result"></pre>
+
+<h2>Logs</h2>
+<pre id="logs"></pre>
+
+<script src="app.js"></script>
 
 </body>
 </html>
