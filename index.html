@@ -1,29 +1,49 @@
 <!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WOL Test</title>
-<link rel="stylesheet" href="style.css">
-</head>
+<html>
 <body>
 
-<h1>WOL Test</h1>
+<h1>Direkter WOL-Test</h1>
 
-<button id="run">
-Start Test
+<button onclick="test()">
+Start
 </button>
 
-<h2>Status</h2>
-<pre id="status"></pre>
+<pre id="out"></pre>
 
-<h2>Ergebnis</h2>
-<pre id="result"></pre>
+<script>
 
-<h2>Logs</h2>
-<pre id="logs"></pre>
+async function test(){
 
-<script src="app.js"></script>
+    const out =
+    document.getElementById("out");
+
+    out.textContent =
+    "Start";
+
+    try{
+
+        const r =
+        await fetch(
+          "https://wol.jw.org/en/wol/meetings/r1/lp-e/2026/42"
+        );
+
+        out.textContent =
+        "STATUS: "
+        + r.status;
+
+    }
+
+    catch(e){
+
+        out.textContent =
+        e.message;
+
+    }
+
+}
+
+</script>
 
 </body>
 </html>
+``
