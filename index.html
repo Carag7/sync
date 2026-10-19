@@ -5,14 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lieder pro Woche</title>
 <style>
-  :root { --bg:#fff; --fg:#1c1c1e; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; }
+  :root { --bg:#fff; --fg:#1c1c1e; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb;
+          --ok:#15803d; --bad:#b91c1c; --warn:#b45309; --card:#f8f9fb; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#111214; --fg:#f2f2f3; --muted:#9ca3af; --line:#2a2c30; --accent:#6ea0ff; }
+    :root { --bg:#111214; --fg:#f2f2f3; --muted:#9ca3af; --line:#2a2c30; --accent:#6ea0ff;
+            --ok:#4ade80; --bad:#f87171; --warn:#fbbf24; --card:#1a1c20; }
   }
+  * { box-sizing:border-box; }
   body { margin:0; padding:16px; background:var(--bg); color:var(--fg);
          font:16px/1.5 system-ui, sans-serif; max-width:720px; margin-inline:auto; }
-  h1 { font-size:1.3rem; margin:0 0 4px; }
-  .meta { color:var(--muted); font-size:.85rem; margin-bottom:16px; }
+  h1 { font-size:1.3rem; margin:0 0 12px; }
+  .meta { color:var(--muted); font-size:.85rem; }
+  .status { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:16px; }
+  .status .line { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+  .dot { width:.7em; height:.7em; border-radius:50%; background:var(--muted); display:inline-block; flex:none; }
+  .dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); } .dot.warn { background:var(--warn); }
+  button { font:inherit; padding:8px 14px; border-radius:8px; border:1px solid var(--accent);
+           background:var(--accent); color:#fff; cursor:pointer; margin-top:10px; }
+  button:disabled { opacity:.55; cursor:default; }
+  #msg { margin-top:8px; font-size:.9rem; }
+  #msg.bad { color:var(--bad); } #msg.ok { color:var(--ok); }
+  details { margin-top:12px; }
+  summary { cursor:pointer; font-size:.95rem; }
+  .run { border-top:1px solid var(--line); padding:8px 0; font-size:.9rem; }
+  .err { margin:6px 0 0 1.1em; padding:6px 8px; border-left:3px solid var(--bad); background:var(--bg); }
+  .err.hint { border-left-color:var(--warn); }
+  .err b { font-weight:600; }
+  .err code { display:block; margin-top:2px; white-space:pre-wrap; word-break:break-word; color:var(--muted); font-size:.85em; }
   .week { border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; }
   .week.now { border-color:var(--accent); }
   .week h2 { font-size:1rem; margin:0 0 6px; }
@@ -24,21 +43,39 @@
 </head>
 <body>
 <h1>Lieder pro Woche</h1>
-<div class="meta" id="meta">Lade …</div>
+
+<section class="status" aria-live="polite">
+  <div class="line"><span class="dot" id="dot"></span><span id="last">Lade …</span></div>
+  <div class="meta" id="lastRun"></div>
+  <button id="refresh" type="button">Jetzt aktualisieren</button>
+  <div id="msg"></div>
+  <details id="logBox" hidden>
+    <summary id="logSummary">Fehlerprotokoll</summary>
+    <div id="log"></div>
+  </details>
+</section>
+
 <div id="list"></div>
-<p class="meta"><a href="lieder.json">lieder.json</a> (Rohdaten für den Player)</p>
+<p class="meta"><a href="lieder.json">lieder.json</a> (Rohdaten für den Player) · <a href="status.json">status.json</a></p>
+
 <script>
-const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
-const fmt = iso => new Date(iso + "T00:00:00").toLocaleDateString("de-AT", { day: "numeric", month: "long" });
+const $ = id => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const fmtDay = iso => new Date(iso + "T00:00:00").toLocaleDateString("de-AT", { day: "numeric", month: "long" });
+const fmtTime = iso => new Date(iso).toLocaleString("de-AT", { dateStyle: "medium", timeStyle: "medium" });
 const mondayOf = d => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
   return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0"); };
+const trigger = t => ({ schedule: "automatisch (wöchentlich)", workflow_dispatch: "manuell", lokal: "lokal" }[t] || t || "unbekannt");
+const getJson = async name => { const r = await fetch(name + "?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) throw new Error(r.status); return r.json(); };
 
-fetch("lieder.json", { cache: "no-cache" }).then(r => r.json()).then(data => {
-  document.getElementById("meta").textContent = "Stand: " + new Date(data.aktualisiert).toLocaleString("de-AT");
-  const now = mondayOf(new Date()), list = document.getElementById("list");
+/* ---------- Lieder ---------- */
+async function loadSongs() {
+  const data = await getJson("lieder.json");
+  const now = mondayOf(new Date()), list = $("list");
+  list.replaceChildren();
   for (const w of data.wochen) {
     const box = el("div", "week" + (w.montag === now ? " now" : ""));
-    box.append(el("h2", "", fmt(w.montag) + " – " + fmt(w.sonntag)));
+    box.append(el("h2", "", fmtDay(w.montag) + " – " + fmtDay(w.sonntag)));
     for (const [key, label] of [["leben_und_dienst", "Leben und Dienst"], ["wachtturm", "Wachtturm-Studium"]]) {
       if (!w[key]) continue;
       const row = el("div", "row");
@@ -48,7 +85,104 @@ fetch("lieder.json", { cache: "no-cache" }).then(r => r.json()).then(data => {
     }
     list.append(box);
   }
-}).catch(() => { document.getElementById("meta").textContent = "lieder.json konnte nicht geladen werden."; });
+}
+
+/* ---------- Status + Fehlerprotokoll ---------- */
+let lastRunSeen = null;
+async function loadStatus() {
+  const st = await getJson("status.json");
+  lastRunSeen = st.letzter_lauf;
+  const runs = st.laeufe || [];
+  const latest = runs[0];
+
+  if (st.letzter_erfolg) {
+    $("last").textContent = "Letztes erfolgreiches Update: " + fmtTime(st.letzter_erfolg);
+  } else {
+    $("last").textContent = "Noch kein erfolgreiches Update.";
+  }
+  $("dot").className = "dot " + (!latest ? "" : latest.ok ? (latest.fehler.length ? "warn" : "ok") : "bad");
+  $("lastRun").textContent = latest
+    ? "Letzter Lauf: " + fmtTime(latest.zeit) + " – " + trigger(latest.ausloeser) + " – " +
+      (latest.ok ? "erfolgreich" : "FEHLGESCHLAGEN")
+    : "Noch kein Lauf protokolliert.";
+
+  // Alle Läufe, in denen ein Test fehlgeschlagen ist (auch wenn eine Ersatz-Option dann geklappt hat)
+  const withErrors = runs.filter(r => r.fehler && r.fehler.length);
+  const box = $("log");
+  box.replaceChildren();
+  $("logBox").hidden = withErrors.length === 0;
+  const total = withErrors.reduce((n, r) => n + r.fehler.length, 0);
+  $("logSummary").textContent = "Fehlerprotokoll (" + total + " fehlgeschlagene Tests in " + withErrors.length + " Läufen)";
+  for (const r of withErrors) {
+    const run = el("div", "run");
+    run.append(el("b", "", fmtTime(r.zeit) + " – " + trigger(r.ausloeser) + " – " +
+      (r.ok ? "am Ende erfolgreich (Ersatz-Option hat funktioniert)" : "fehlgeschlagen")));
+    for (const e of r.fehler) {
+      const d = el("div", "err" + (r.ok ? " hint" : ""));
+      d.append(el("b", "", fmtTime(e.zeit) + " · " + e.schritt));
+      d.append(el("code", "", (e.ziel ? e.ziel + "\n" : "") + e.meldung));
+      run.append(d);
+    }
+    box.append(run);
+  }
+}
+
+/* ---------- Button ---------- */
+function say(text, cls) { const m = $("msg"); m.textContent = text; m.className = cls || ""; }
+
+async function startUpdate(pin) {
+  const res = await fetch("/api/refresh", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pin: pin || "" }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.status === 401 && body.pin_erforderlich) {
+    const p = prompt("PIN für die Aktualisierung:");
+    if (p === null) return { abgebrochen: true };
+    return startUpdate(p);
+  }
+  if (res.status === 404) throw new Error("Die Funktion /api/refresh gibt es nicht (nur auf der Cloudflare-Seite verfügbar, nicht lokal).");
+  if (!res.ok || !body.ok) throw new Error(body.fehler || ("Fehler " + res.status));
+  return body;
+}
+
+$("refresh").addEventListener("click", async () => {
+  const btn = $("refresh");
+  btn.disabled = true;
+  say("Starte Update …");
+  const before = lastRunSeen;
+  try {
+    const r = await startUpdate();
+    if (r.abgebrochen) { say("Abgebrochen."); btn.disabled = false; return; }
+  } catch (err) {
+    say("Update konnte nicht gestartet werden: " + err.message, "bad");
+    btn.disabled = false;
+    return;
+  }
+  say("Update läuft bei GitHub. Danach veröffentlicht Cloudflare die Daten (zusammen meist 1–3 Minuten) …");
+  const t0 = Date.now();
+  const timer = setInterval(async () => {
+    try {
+      const st = await getJson("status.json");
+      if (st.letzter_lauf !== before) {
+        clearInterval(timer);
+        await Promise.all([loadStatus(), loadSongs()]);
+        const ok = st.laeufe[0] && st.laeufe[0].ok;
+        say(ok ? "Update fertig." : "Update ist fehlgeschlagen – Details im Fehlerprotokoll.", ok ? "ok" : "bad");
+        btn.disabled = false;
+      } else if (Date.now() - t0 > 8 * 60 * 1000) {
+        clearInterval(timer);
+        say("Noch keine Rückmeldung nach 8 Minuten. Bitte später die Seite neu laden oder unter GitHub → Actions nachsehen.", "bad");
+        btn.disabled = false;
+      }
+    } catch (e) { /* kurzzeitig nicht erreichbar -> weiter warten */ }
+  }, 15000);
+});
+
+Promise.all([loadSongs(), loadStatus()]).catch(() => {
+  $("last").textContent = "Daten konnten nicht geladen werden.";
+});
 </script>
 </body>
 </html>
