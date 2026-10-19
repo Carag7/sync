@@ -5,7 +5,7 @@ document
 runTests
 );
 
-async function runTests() {
+async function runTests(){
 
     const status =
     document.getElementById("status");
@@ -16,55 +16,49 @@ async function runTests() {
     const logs =
     document.getElementById("logs");
 
-    status.textContent =
-    "Direkter Abruf läuft...";
+    const report = {
+        created:new Date().toISOString(),
+        tests:[]
+    };
 
-    try {
-
-        const response =
-        await fetch(
-            "https://wol.jw.org/en/wol/meetings/r1/lp-e/2026/42"
-        );
-
-        const html =
-        await response.text();
+    try{
 
         status.textContent =
-        "Fertig";
+        "Hole Daten vom Worker...";
+
+        const res =
+        await fetch("/update");
+
+        const json =
+        await res.json();
 
         result.textContent =
-        html.substring(0,2000);
-
-        logs.textContent =
         JSON.stringify(
-            {
-                status:
-                response.status,
-
-                length:
-                html.length
-            },
+            json,
             null,
             2
         );
+
+        report.tests.push({
+            worker:true
+        });
 
     }
 
     catch(err){
 
-        status.textContent =
-        "FEHLER";
+        report.tests.push({
+            worker:false,
+            error:err.message
+        });
 
-        logs.textContent =
+    }
+
+    logs.textContent =
         JSON.stringify(
-            {
-                error:
-                err.message
-            },
+            report,
             null,
             2
         );
-
-    }
 
 }
