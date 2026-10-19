@@ -26,11 +26,45 @@ async function runTests(){
         status.textContent =
         "Hole Daten vom Worker...";
 
-      const res =
-await fetch(
-window.location.origin + "/update"
-);
-        const json =
+async function runTests(){
+
+    const logs =
+    document.getElementById("logs");
+
+    try {
+
+        const url =
+        window.location.origin
+        + "/list";
+
+        logs.textContent =
+        "Teste:\n" + url;
+
+        const res =
+        await fetch(url);
+
+        const text =
+        await res.text();
+
+        logs.textContent +=
+        "\n\nStatus: "
+        + res.status;
+
+        logs.textContent +=
+        "\n\nAntwort:\n"
+        + text;
+
+    }
+
+    catch(err){
+
+        logs.textContent =
+        "FEHLER:\n\n"
+        + err.message;
+
+    }
+
+}        const json =
         await res.json();
 
         result.textContent =
