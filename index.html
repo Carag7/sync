@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lieder pro Woche</title>
+<style>
+  :root { --bg:#fff; --fg:#1c1c1e; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111214; --fg:#f2f2f3; --muted:#9ca3af; --line:#2a2c30; --accent:#6ea0ff; }
+  }
+  body { margin:0; padding:16px; background:var(--bg); color:var(--fg);
+         font:16px/1.5 system-ui, sans-serif; max-width:720px; margin-inline:auto; }
+  h1 { font-size:1.3rem; margin:0 0 4px; }
+  .meta { color:var(--muted); font-size:.85rem; margin-bottom:16px; }
+  .week { border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+  .week.now { border-color:var(--accent); }
+  .week h2 { font-size:1rem; margin:0 0 6px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:baseline; font-size:.95rem; }
+  .row b { min-width:8.5em; color:var(--muted); font-weight:500; }
+  .nr { background:var(--line); border-radius:6px; padding:0 8px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<h1>Lieder pro Woche</h1>
+<div class="meta" id="meta">Lade …</div>
+<div id="list"></div>
+<p class="meta"><a href="lieder.json">lieder.json</a> (Rohdaten für den Player)</p>
+<script>
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+const fmt = iso => new Date(iso + "T00:00:00").toLocaleDateString("de-AT", { day: "numeric", month: "long" });
+const mondayOf = d => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0") + "-" + String(x.getDate()).padStart(2, "0"); };
+
+fetch("lieder.json", { cache: "no-cache" }).then(r => r.json()).then(data => {
+  document.getElementById("meta").textContent = "Stand: " + new Date(data.aktualisiert).toLocaleString("de-AT");
+  const now = mondayOf(new Date()), list = document.getElementById("list");
+  for (const w of data.wochen) {
+    const box = el("div", "week" + (w.montag === now ? " now" : ""));
+    box.append(el("h2", "", fmt(w.montag) + " – " + fmt(w.sonntag)));
+    for (const [key, label] of [["leben_und_dienst", "Leben und Dienst"], ["wachtturm", "Wachtturm-Studium"]]) {
+      if (!w[key]) continue;
+      const row = el("div", "row");
+      row.append(el("b", "", label));
+      for (const l of w[key].lieder) row.append(el("span", "nr", String(l.nummer)));
+      box.append(row);
+    }
+    list.append(box);
+  }
+}).catch(() => { document.getElementById("meta").textContent = "lieder.json konnte nicht geladen werden."; });
+</script>
+</body>
+</html>
