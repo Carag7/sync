@@ -26,41 +26,65 @@ async function runTests(){
         status.textContent =
         "Hole Daten vom Worker...";
 
-async function runTests(){
+async function runTests() {
+
+    const status =
+    document.getElementById("status");
+
+    const result =
+    document.getElementById("result");
 
     const logs =
     document.getElementById("logs");
 
+    status.textContent =
+    "Direkter Abruf läuft...";
+
     try {
 
-        const url =
-        window.location.origin
-        + "/list";
+        const response =
+        await fetch(
+            "https://wol.jw.org/en/wol/meetings/r1/lp-e/2026/42"
+        );
+
+        const html =
+        await response.text();
+
+        status.textContent =
+        "Fertig";
+
+        result.textContent =
+        html.substring(0,2000);
 
         logs.textContent =
-        "Teste:\n" + url;
+        JSON.stringify(
+            {
+                status:
+                response.status,
 
-        const res =
-        await fetch(url);
-
-        const text =
-        await res.text();
-
-        logs.textContent +=
-        "\n\nStatus: "
-        + res.status;
-
-        logs.textContent +=
-        "\n\nAntwort:\n"
-        + text;
+                length:
+                html.length
+            },
+            null,
+            2
+        );
 
     }
 
     catch(err){
 
+        status.textContent =
+        "FEHLER";
+
         logs.textContent =
-        "FEHLER:\n\n"
-        + err.message;
+        JSON.stringify(
+            {
+                error:
+                err.message
+            },
+            null,
+            2
+        );
 
     }
 
