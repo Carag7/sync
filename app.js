@@ -5,7 +5,7 @@ document
 runTests
 );
 
-async function runTests(){
+async function runTests() {
 
     const status =
     document.getElementById("status");
@@ -16,85 +16,55 @@ async function runTests(){
     const logs =
     document.getElementById("logs");
 
-    const report = {
-        created:new Date().toISOString(),
-        tests:[]
-    };
-
-    try{
-
-        status.textContent =
-        "Hole Daten vom Worker...";
-
-async function runTests(){
-
-    const logs =
-    document.getElementById("logs");
+    status.textContent =
+    "Direkter Abruf läuft...";
 
     try {
 
-        const url =
-        window.location.origin
-        + "/list";
+        const response =
+        await fetch(
+            "https://wol.jw.org/en/wol/meetings/r1/lp-e/2026/42"
+        );
 
-        logs.textContent =
-        "Teste:\n" + url;
+        const html =
+        await response.text();
 
-        const res =
-        await fetch(url);
-
-        const text =
-        await res.text();
-
-        logs.textContent +=
-        "\n\nStatus: "
-        + res.status;
-
-        logs.textContent +=
-        "\n\nAntwort:\n"
-        + text;
-
-    }
-
-    catch(err){
-
-        logs.textContent =
-        "FEHLER:\n\n"
-        + err.message;
-
-    }
-
-}
-        const json =
-        await res.json();
+        status.textContent =
+        "Fertig";
 
         result.textContent =
+        html.substring(0,2000);
+
+        logs.textContent =
         JSON.stringify(
-            json,
+            {
+                status:
+                response.status,
+
+                length:
+                html.length
+            },
             null,
             2
         );
-
-        report.tests.push({
-            worker:true
-        });
 
     }
 
     catch(err){
 
-        report.tests.push({
-            worker:false,
-            error:err.message
-        });
+        status.textContent =
+        "FEHLER";
 
-    }
-
-    logs.textContent =
+        logs.textContent =
         JSON.stringify(
-            report,
+            {
+                error:
+                err.message
+            },
             null,
             2
         );
+
+    }
 
 }
