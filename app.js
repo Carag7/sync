@@ -26,9 +26,10 @@ async function runTests(){
         status.textContent =
         "Hole Daten vom Worker...";
 
-        const res =
-        await fetch("/update");
-
+      const res =
+await fetch(
+window.location.origin + "/update"
+);
         const json =
         await res.json();
 
