@@ -1,39 +1,66 @@
+document
+.getElementById("run")
+.addEventListener(
+"click",
+runTests
+);
+
 async function runTests(){
+
+    const status =
+    document.getElementById("status");
+
+    const result =
+    document.getElementById("result");
 
     const logs =
     document.getElementById("logs");
 
-    try {
+    const report = {
+        created:new Date().toISOString(),
+        tests:[]
+    };
 
-        const url =
-        window.location.origin
-        + "/list";
+    try{
 
-        logs.textContent =
-        "Teste:\n" + url;
+        status.textContent =
+        "Hole Daten vom Worker...";
 
-        const res =
-        await fetch(url);
+const res =
+await fetch(
+window.location.origin + "/update"
+);
 
-        const text =
-        await res.text();
+        const json =
+        await res.json();
 
-        logs.textContent +=
-        "\n\nStatus: "
-        + res.status;
+        result.textContent =
+        JSON.stringify(
+            json,
+            null,
+            2
+        );
 
-        logs.textContent +=
-        "\n\nAntwort:\n"
-        + text;
+        report.tests.push({
+            worker:true
+        });
 
     }
 
     catch(err){
 
-        logs.textContent =
-        "FEHLER:\n\n"
-        + err.message;
+        report.tests.push({
+            worker:false,
+            error:err.message
+        });
 
     }
+
+    logs.textContent =
+        JSON.stringify(
+            report,
+            null,
+            2
+        );
 
 }
